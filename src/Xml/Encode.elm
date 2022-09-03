@@ -144,10 +144,13 @@ encode indent value =
     string "hello" |> encode 0
     --> "hello"
 
+    string "<hello>" |> encode 0
+    --> "&lt;hello>"
+
 -}
 string : String -> Value
 string str =
-    StrNode str
+    StrNode (String.replace "<" "&lt;" str)
 
 
 {-| Encode an int

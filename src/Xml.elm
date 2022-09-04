@@ -167,6 +167,11 @@ xmlDecoder =
                             case val of
                                 Object list ->
                                     list
+                                        -- reverse the list before it
+                                        -- is processed with foldl and
+                                        -- :: (which reverses the
+                                        -- order again)
+                                        |> List.reverse
                                         |> List.foldl
                                             (\v ( a_, p_ ) ->
                                                 case v of

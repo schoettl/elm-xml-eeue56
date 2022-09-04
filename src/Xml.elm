@@ -3,6 +3,7 @@ module Xml exposing
     , foldl, map
     , xmlToJson2, jsonToXml, xmlDecoder
     , decodeXmlEntities, encodeXmlEntities
+    , isValidXmlName
     )
 
 {-| The main data structure along with some trivial helpers.
@@ -33,6 +34,7 @@ Please try to use UTF-8 / Unicode instead.
 import Dict exposing (Dict)
 import Json.Decode as JD
 import Json.Encode as Json
+import Regex
 
 
 {-| Representation of the XML tree
@@ -123,6 +125,17 @@ predefinedEntities =
     -- & / &amp; must come last!
     , ( '&', "amp" )
     ]
+
+
+isValidXmlName : String -> Bool
+isValidXmlName =
+    let
+        nameRegex =
+            -- O'Reilly: XML in a Nutshell: https://docstore.mik.ua/orelly/xml/xmlnut/ch02_04.htm
+            Maybe.withDefault Regex.never
+                (Regex.fromString "^[_a-zA-Z0-9\\p{Letter}][-_.:a-zA-Z0-9\\p{Letter}]*$")
+    in
+    Regex.contains nameRegex
 
 
 {-| Convert an `Xml.Value` to a `Json.Value`

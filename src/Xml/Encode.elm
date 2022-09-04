@@ -145,7 +145,7 @@ encode indent value =
     --> "hello"
 
     string "<hello>" |> encode 0
-    --> "&lt;hello>"
+    --> "&lt;hello&gt;"
 
 -}
 string : String -> Value

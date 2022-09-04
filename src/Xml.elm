@@ -66,24 +66,43 @@ foldl fn init value =
             fn anything init
 
 
+{-| Encode string with XML entities
+
+    encodeXmlEntities "<hello>"
+    --> "&lt;hello&gt;"
+
+-}
 encodeXmlEntities : String -> String
 encodeXmlEntities s =
     List.foldr (\( x, y ) z -> String.replace (String.fromChar x) ("&" ++ y ++ ";") z) s predefinedEntities
 
 
+{-| Decode string with XML entities
+
+    decodeXmlEntities "&lt;hello&gt;"
+    --> "<hello>"
+
+    Do not decode entities twice!
+
+    decodeXmlEntities "&amp;lt;hello&gt;"
+    --> "&lt;hello>"
+
+-}
 decodeXmlEntities : String -> String
 decodeXmlEntities s =
-    List.foldr (\( x, y ) z -> String.replace ("&" ++ y ++ ";") (String.fromChar x) z) s predefinedEntities
+    List.foldl (\( x, y ) z -> String.replace ("&" ++ y ++ ";") (String.fromChar x) z) s predefinedEntities
 
 
 predefinedEntities : List ( Char, String )
 predefinedEntities =
     -- https://en.wikipedia.org/wiki/List_of_XML_and_HTML_character_entity_references
     [ ( '"', "quot" )
-    , ( '&', "amp" )
     , ( '\'', "apos" )
     , ( '<', "lt" )
     , ( '>', "gt" )
+
+    -- & / &amp; must come last!
+    , ( '&', "amp" )
     ]
 
 

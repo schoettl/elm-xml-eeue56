@@ -1,6 +1,7 @@
 module Xml exposing
     ( Value(..)
     , foldl, map, xmlToJson2, jsonToXml
+    , decodeXmlEntities, encodeXmlEntities
     )
 
 {-| The main data structure along with some trivial helpers.
@@ -63,6 +64,27 @@ foldl fn init value =
 
         anything ->
             fn anything init
+
+
+encodeXmlEntities : String -> String
+encodeXmlEntities s =
+    List.foldr (\( x, y ) z -> String.replace (String.fromChar x) ("&" ++ y ++ ";") z) s predefinedEntities
+
+
+decodeXmlEntities : String -> String
+decodeXmlEntities s =
+    List.foldr (\( x, y ) z -> String.replace ("&" ++ y ++ ";") (String.fromChar x) z) s predefinedEntities
+
+
+predefinedEntities : List ( Char, String )
+predefinedEntities =
+    -- https://en.wikipedia.org/wiki/List_of_XML_and_HTML_character_entity_references
+    [ ( '"', "quot" )
+    , ( '&', "amp" )
+    , ( '\'', "apos" )
+    , ( '<', "lt" )
+    , ( '>', "gt" )
+    ]
 
 
 {-| Convert an `Xml.Value` to a `Json.Value`

@@ -16,7 +16,7 @@ module Xml.Encode exposing
 
 import Dict exposing (Dict)
 import String
-import Xml exposing (Value(..))
+import Xml exposing (Value(..), encodeXmlEntities)
 
 
 boolToString : Bool -> String
@@ -32,7 +32,7 @@ propToString : Value -> String
 propToString value =
     case value of
         StrNode str ->
-            str
+            encodeXmlEntities str
 
         IntNode n ->
             String.fromInt n
@@ -110,7 +110,7 @@ valueToString level indent value =
                 ++ ">"
 
         StrNode str ->
-            str
+            encodeXmlEntities str
 
         IntNode n ->
             String.fromInt n
@@ -149,8 +149,8 @@ encode indent value =
 
 -}
 string : String -> Value
-string str =
-    StrNode (String.replace "<" "&lt;" str)
+string =
+    StrNode
 
 
 {-| Encode an int

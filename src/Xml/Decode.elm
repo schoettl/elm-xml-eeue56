@@ -16,7 +16,7 @@ module Xml.Decode exposing
 
 import Dict
 import Regex exposing (Regex)
-import Xml exposing (Value(..))
+import Xml exposing (Value(..), decodeXmlEntities)
 import Xml.Encode as Encode
 
 
@@ -219,10 +219,13 @@ decode text =
     decodeString "hello"
     --> Ok (StrNode "hello")
 
+    decodeString "hello &amp; good bye"
+    --> Ok (StrNode "hello & good bye")
+
 -}
 decodeString : String -> Result String Value
 decodeString str =
-    StrNode str
+    StrNode (decodeXmlEntities str)
         |> Ok
 
 

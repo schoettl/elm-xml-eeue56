@@ -31,7 +31,13 @@ suite =
             \s ->
                 let
                     s1 =
-                        String.filter (\c -> not <| String.contains (String.fromChar c) "=\n\u{000D}\t ") s
+                        String.filter
+                            (\c ->
+                                not <|
+                                    -- I'm not sure why some characters are not allowed...
+                                    String.contains (String.fromChar c) "=\n\t "
+                            )
+                            s
 
                     val =
                         object

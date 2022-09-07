@@ -106,6 +106,11 @@ exampleWithPropsAsString =
         |> String.trim
 
 
+exampleStringWithSpeciaChars =
+    -- this is just a bad looking string
+    "&'\"<>;&amp;"
+
+
 badXml : String
 badXml =
     """ f<name>noah</name>"""
@@ -276,4 +281,54 @@ all =
                 Expect.equal
                     (List.length <| Result.withDefault [] <| ExampleStuff.fromXML <| ExampleStuff.stuff)
                     100
+        , test "a string with XML character entities is correctly decoded" <|
+            \_ ->
+                Expect.equal (decodeString "&amp;&quot;&apos;&lt;&gt;")
+                    (Ok <| string "&\"'<>")
+        , test "a tag with special characters is correctly encoded and decoded" <|
+            \_ ->
+                let
+                    val =
+                        object [ ( "tagname", Dict.empty, string exampleStringWithSpeciaChars ) ]
+                in
+                Expect.equal (decode <| encode 0 val) (Ok val)
+        , test "XML character entities are encoded and decoded, each only once" <|
+            \_ ->
+                let
+                    val =
+                        object [ ( "tagname", Dict.fromList [ ( "attr", string "&<>\"&amp;&lt;&gt;&quot;" ) ], string "x" ) ]
+                in
+                Expect.equal (decode <| encode 0 val) (Ok val)
+        , skip <|
+            test "Decode tag with single-quoted attribute value" <|
+                \_ ->
+                    let
+                        val =
+                            object [ ( "tagname", Dict.fromList [ ( "attr", string "foo" ) ], list [] ) ]
+                    in
+                    Expect.equal (decode "<tagname attr='foo' ></tagname>")
+                        (Ok val)
+        , skip <|
+            test "Decode empty attribute value" <|
+                \_ ->
+                    let
+                        val =
+                            object [ ( "tagname", Dict.fromList [ ( "attr", string "" ) ], list [] ) ]
+                    in
+                    Expect.equal (decode "<tagname attr=\"\" ></tagname>") (Ok val)
+        , skip <|
+            test "Decode attribute value with certain special characters" <|
+                \_ ->
+                    let
+                        val =
+                            object [ ( "tagname", Dict.fromList [ ( "attr", string "=  " ) ], list [] ) ]
+                    in
+                    Expect.equal (decode "<tagname attr=\"=  \" ></tagname>") (Ok val)
+        , test "Decode empty tag" <|
+            \_ ->
+                let
+                    val =
+                        object [ ( "tagname", Dict.empty, list [] ) ]
+                in
+                Expect.equal (decode "<tagname/>") (Ok val)
         ]

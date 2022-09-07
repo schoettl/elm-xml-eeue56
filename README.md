@@ -7,7 +7,7 @@ First bring XML into Elm as a `Value`. Once imported as a Value, you can then ei
 
 Or you can turn it back to a string using `Xml.Encode.encode`. Or pull it apart using `Xml.Encode.Value`.
 
-In order to turn an `Xml.Value` into a record, you probably want `Xml.Query`, paired with `Result.map`.
+In order to turn an `Xml.Value` into a record, you probably want `Xml.Query`, paired with `Result.map`. Or use `xmlToJson` and your existing JSON decoder.
 
 ```elm
 
@@ -57,3 +57,13 @@ people =
 
 
 ```
+
+What's *not* supported yet:
+
+- [ ] Single-quoted attribute values (e.g. `<elem attr='val' />`)
+- [ ] Empty attributes are discarded (e.g. `<elem attr="">`)
+- [ ] Some special characters and consecutive whitespace in attribute values are not allowed (e.g. `<elem attr="=  ">`)
+- [ ] Element and attribute names are not checked for validity in `jsonToXml` which can lead to invalid XML.
+- [ ] …
+
+See skipped tests in [Tests.elm](tests/Tests.elm).

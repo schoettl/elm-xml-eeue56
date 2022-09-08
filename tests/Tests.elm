@@ -331,4 +331,14 @@ all =
                         object [ ( "tagname", Dict.empty, list [] ) ]
                 in
                 Expect.equal (decode "<tagname/>") (Ok val)
+        , describe "XML character entities &xxx;"
+            [ test "decode entities, each only once" <|
+                \_ -> decodeXmlEntities "&amp;quot;" |> Expect.equal "&quot;"
+            , test "decode entity" <|
+                \_ -> decodeXmlEntities "&quot;" |> Expect.equal "\""
+            , test "encode entity" <|
+                \_ -> encodeXmlEntities "&" |> Expect.equal "&amp;"
+            , test "encode entities, each only once" <|
+                \_ -> encodeXmlEntities "&quot;" |> Expect.equal "&amp;quot;"
+            ]
         ]

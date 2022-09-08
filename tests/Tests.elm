@@ -3,6 +3,7 @@ module Tests exposing (..)
 import Dict
 import ExampleStuff
 import Expect
+import Json.Encode as JE
 import String
 import Test exposing (..)
 import Xml exposing (..)
@@ -331,6 +332,40 @@ all =
                         object [ ( "tagname", Dict.empty, list [] ) ]
                 in
                 Expect.equal (decode "<tagname/>") (Ok val)
+        , describe
+            "Find bug: json object with many fields is encoded as '' if one field is null"
+            [ test "object with one empty tag" <|
+                \_ ->
+                    Expect.equal
+                        (decode "<tag1>x</tag1><tag2/>")
+                        (Ok <|
+                            object
+                                [ ( "tag1", Dict.empty, string "x" )
+                                , ( "tag2", Dict.empty, null )
+                                ]
+                        )
+            , test "encode object with one empty tag" <|
+                \_ ->
+                    Expect.equal
+                        "<tag1>x</tag1>\n<tag2></tag2>"
+                        (encode 0 <|
+                            object
+                                [ ( "tag1", Dict.empty, string "x" )
+                                , ( "tag2", Dict.empty, null )
+                                ]
+                        )
+            , test "encode object JSON object with one null field" <|
+                \_ ->
+                    Expect.equal
+                        "<tag1></tag1>\n<tag2></tag2>"
+                        (encode 0 <|
+                            jsonToXml <|
+                                JE.object
+                                    [ ( "tag1", JE.string "x" )
+                                    , ( "tag2", JE.null )
+                                    ]
+                        )
+            ]
         , describe "XML character entities &xxx;"
             [ test "decode entities, each only once" <|
                 \_ -> decodeXmlEntities "&amp;quot;" |> Expect.equal "&quot;"

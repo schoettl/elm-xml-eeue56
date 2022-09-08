@@ -17,7 +17,7 @@ import Xml.Decode exposing (decode)
 import Xml.Query exposing (tags)
 
 decodedXml : Value
-decodedXml = 
+decodedXml =
 	"""
 <person>
 	<name>noah</name>
@@ -33,7 +33,7 @@ decodedXml =
 		|> Maybe.withDefault null
 
 
-type alias Person = 
+type alias Person =
 	{ name: String
 	, age: Int
 	}
@@ -60,10 +60,10 @@ people =
 
 What's *not* supported yet:
 
-- [ ] Single-quoted attribute values (e.g. `<elem attr='val' />`)
+- [ ] Single-quoted attribute values (e.g. `<elem attr='val'>`)
 - [ ] Empty attributes are discarded (e.g. `<elem attr="">`)
-- [ ] Some special characters and consecutive whitespace in attribute values are not allowed (e.g. `<elem attr="=  ">`)
-- [ ] Element and attribute names are not checked for validity in `jsonToXml` which can lead to invalid XML.
+- [ ] Some special characters and consecutive whitespace in attribute values are not allowed (e.g. `<elem attr="=">`)
+- [ ] Element and attribute names are not checked for validity in `object` and `jsonToXml` which can lead to invalid XML.
 - [ ] …
 
 See skipped tests in [Tests.elm](tests/Tests.elm).

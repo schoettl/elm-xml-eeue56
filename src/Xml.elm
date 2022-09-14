@@ -1,7 +1,7 @@
 module Xml exposing
     ( Value(..)
     , foldl, map, xmlToJson2, jsonToXml
-    , decodeXmlEntities, encodeXmlEntities
+    , decodeXmlEntities, encodeXmlEntities, xmlDecoder
     )
 
 {-| The main data structure along with some trivial helpers.
@@ -187,6 +187,9 @@ xmlDecoder =
         , JD.map IntNode JD.int
         , JD.map FloatNode JD.float
         , JD.map BoolNode JD.bool
+        , JD.map StrNode (JD.null "") -- this leads to an empty tag which is better than nothing
+
+        -- , JD.map Object (JD.null []) -- would it be better if the tag is omitted completely, i.e. Object []?
         , JD.list (JD.lazy (\_ -> xmlDecoder))
             |> JD.andThen
                 (\list ->

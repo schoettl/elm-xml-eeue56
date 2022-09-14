@@ -3,6 +3,7 @@ module Tests exposing (..)
 import Dict
 import ExampleStuff
 import Expect
+import Json.Decode as JD
 import Json.Encode as JE
 import String
 import Test exposing (..)
@@ -332,6 +333,69 @@ all =
                         object [ ( "tagname", Dict.empty, list [] ) ]
                 in
                 Expect.equal (decode "<tagname/>") (Ok val)
+        , describe "Test xmlDecoder to convert JSON to XML"
+            [ test "decodes string" <|
+                \_ ->
+                    Expect.equal
+                        (JD.decodeString xmlDecoder """{"a":"b"}""")
+                        (Ok <| Tag "a" Dict.empty (StrNode "b"))
+            , test "decodes int" <|
+                \_ ->
+                    Expect.equal
+                        (JD.decodeString xmlDecoder """{"a":1}""")
+                        (Ok <| Tag "a" Dict.empty (IntNode 1))
+            , test "decodes float" <|
+                \_ ->
+                    Expect.equal
+                        (JD.decodeString xmlDecoder """{"a":1.1}""")
+                        (Ok <| Tag "a" Dict.empty (FloatNode 1.1))
+            , test "decodes bool" <|
+                \_ ->
+                    Expect.equal
+                        (JD.decodeString xmlDecoder """{"a":true}""")
+                        (Ok <| Tag "a" Dict.empty (BoolNode True))
+            , test "decodes null" <|
+                -- TODO how should it behave?
+                \_ ->
+                    Expect.equal
+                        (JD.decodeString xmlDecoder """{"a":null}""")
+                        (Ok <| Tag "a" Dict.empty (StrNode ""))
+            , test "decodes plain list" <|
+                \_ ->
+                    Expect.equal
+                        (JD.decodeString xmlDecoder """["a", 1]""")
+                        (Ok <| Object [ StrNode "a", IntNode 1 ])
+            , test "decodes list inside a tag" <|
+                \_ ->
+                    Expect.equal
+                        (JD.decodeString xmlDecoder """{"a": [false, 1]}""")
+                        (Ok <| Tag "a" Dict.empty <| Object [ BoolNode False, IntNode 1 ])
+            , test "decodes list with null" <|
+                \_ ->
+                    Expect.equal
+                        (JD.decodeString xmlDecoder """[null, 1]""")
+                        (Ok <| Object [ StrNode "", IntNode 1 ])
+            , test "decode plain object" <|
+                \_ ->
+                    Expect.equal
+                        (JD.decodeString xmlDecoder """{"a": 1, "b": 2}""")
+                        (Ok <|
+                            Object
+                                [ Tag "a" Dict.empty (IntNode 1)
+                                , Tag "b" Dict.empty (IntNode 2)
+                                ]
+                        )
+            , test "decode object with null" <|
+                \_ ->
+                    Expect.equal
+                        (JD.decodeString xmlDecoder """{"a": 1, "b": null}""")
+                        (Ok <|
+                            Object
+                                [ Tag "a" Dict.empty (IntNode 1)
+                                , Tag "b" Dict.empty (StrNode "")
+                                ]
+                        )
+            ]
         , describe
             "Find bug: json object with many fields is encoded as '' if one field is null"
             [ test "object with one empty tag" <|

@@ -19,17 +19,33 @@ import String
 import Xml exposing (Value(..), encodeXmlEntities)
 
 
-boolToString : Bool -> String
-boolToString b =
+type alias EncodeSettings =
+    { nullValue : String -- if not omitNullTag, encode NullNode like this
+    , trueValue : String -- encode True like this
+    , falseValue : String -- encode False like this
+    , omitNullTag : Bool -- omit a tag if its only content is a NullNode
+    }
+
+
+defaultEncodeSettings =
+    { nullValue = ""
+    , trueValue = "true"
+    , falseValue = "false"
+    , omitNullTag = True
+    }
+
+
+boolToString : EncodeSettings -> Bool -> String
+boolToString setts b =
     if b then
-        "true"
+        setts.trueValue
 
     else
-        "false"
+        setts.falseValue
 
 
-propToString : Value -> String
-propToString value =
+propToString : EncodeSettings -> Value -> String
+propToString setts value =
     case value of
         StrNode str ->
             encodeXmlEntities str
@@ -38,7 +54,7 @@ propToString value =
             String.fromInt n
 
         BoolNode b ->
-            boolToString b
+            boolToString setts b
 
         FloatNode f ->
             String.fromFloat f
@@ -47,10 +63,10 @@ propToString value =
             ""
 
 
-propsToString : Dict String Value -> String
-propsToString props =
+propsToString : EncodeSettings -> Dict String Value -> String
+propsToString setts props =
     Dict.toList props
-        |> List.map (\( key, value ) -> key ++ "=\"" ++ propToString value ++ "\"")
+        |> List.map (\( key, value ) -> key ++ "=\"" ++ propToString setts value ++ "\"")
         |> String.join " "
         |> (\x ->
                 if String.length x > 0 then
@@ -77,37 +93,41 @@ needsIndent nextValue =
             False
 
 
-valueToString : Int -> Int -> Value -> String
-valueToString level indent value =
+valueToString : EncodeSettings -> Int -> Int -> Value -> String
+valueToString setts level indent value =
     case value of
         Tag name props nextValue ->
-            let
-                indentString =
-                    if needsIndent nextValue then
-                        "\n"
+            if setts.omitNullTag && nextValue == NullNode then
+                ""
 
-                    else
-                        ""
+            else
+                let
+                    indentString =
+                        if needsIndent nextValue then
+                            "\n"
 
-                indentClosing =
-                    if needsIndent nextValue then
-                        String.repeat (level * indent) " "
+                        else
+                            ""
 
-                    else
-                        ""
-            in
-            String.repeat (level * indent) " "
-                ++ "<"
-                ++ name
-                ++ propsToString props
-                ++ ">"
-                ++ indentString
-                ++ valueToString level indent nextValue
-                ++ indentString
-                ++ indentClosing
-                ++ "</"
-                ++ name
-                ++ ">"
+                    indentClosing =
+                        if needsIndent nextValue then
+                            String.repeat (level * indent) " "
+
+                        else
+                            ""
+                in
+                String.repeat (level * indent) " "
+                    ++ "<"
+                    ++ name
+                    ++ propsToString setts props
+                    ++ ">"
+                    ++ indentString
+                    ++ valueToString setts level indent nextValue
+                    ++ indentString
+                    ++ indentClosing
+                    ++ "</"
+                    ++ name
+                    ++ ">"
 
         StrNode str ->
             encodeXmlEntities str
@@ -119,24 +139,34 @@ valueToString level indent value =
             String.fromFloat n
 
         BoolNode b ->
-            boolToString b
+            boolToString setts b
+
+        NullNode ->
+            setts.nullValue
 
         Object xs ->
-            List.map (valueToString (level + 1) indent) xs
+            List.map (valueToString setts (level + 1) indent) xs
                 |> String.join "\n"
 
         DocType name props ->
             "<?"
                 ++ name
-                ++ propsToString props
+                ++ propsToString setts props
                 ++ "?>"
 
 
 {-| Take a value, then generate a string from it
 -}
 encode : Int -> Value -> String
-encode indent value =
-    valueToString -1 indent value
+encode =
+    encodeWith defaultEncodeSettings
+
+
+{-| Take a value, then generate a string from it
+-}
+encodeWith : EncodeSettings -> Int -> Value -> String
+encodeWith setts indent value =
+    valueToString setts -1 indent value
 
 
 {-| Encode a string

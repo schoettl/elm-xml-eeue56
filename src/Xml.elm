@@ -25,6 +25,7 @@ type Value
     | IntNode Int
     | FloatNode Float
     | BoolNode Bool
+    | NullNode
     | Object (List Value)
     | DocType String (Dict String Value)
 
@@ -170,6 +171,9 @@ xmlToJson2 xml =
 
         BoolNode bool ->
             Json.bool bool
+
+        NullNode ->
+            Json.null
 
         Object values ->
             Json.list xmlToJson2 values

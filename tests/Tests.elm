@@ -364,6 +364,12 @@ all =
                     Expect.equal
                         (JD.decodeString xmlDecoder """["a", 1]""")
                         (Ok <| Object [ StrNode "a", IntNode 1 ])
+            , test "decodes empty list" <|
+                -- same as "null"! not good!
+                \_ ->
+                    Expect.equal
+                        (JD.decodeString xmlDecoder "[]")
+                        (Ok <| Object [])
             , test "decodes list inside a tag" <|
                 \_ ->
                     Expect.equal

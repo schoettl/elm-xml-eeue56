@@ -20,6 +20,17 @@ import Xml exposing (Value(..), decodeXmlEntities)
 import Xml.Encode as Encode
 
 
+type alias DecodeSettings =
+    { nullValues : List String
+    , trueValues : List String
+    , falseValues : List String
+    }
+
+
+defaultDecodeSettings =
+    { nullValues = [ "" ], trueValues = [ "true" ], falseValues = [ "false" ] }
+
+
 {-| Try and decode the props from a string
 -}
 decodeProps : String -> Result String Value
@@ -202,7 +213,22 @@ actualDecode text =
 
 -}
 decode : String -> Result String Value
-decode text =
+decode =
+    decodeWith defaultDecodeSettings
+
+
+{-| Try to decode a string and turn it into an XML value
+
+    import Xml exposing(Value(..))
+    import Xml.Encode exposing (null)
+    import Dict
+
+    decode "<name></name>"
+    --> Ok (Object [Tag "name" Dict.empty null])
+
+-}
+decodeWith : DecodeSettings -> String -> Result String Value
+decodeWith setts text =
     case String.trim text of
         "" ->
             Ok (Object [])

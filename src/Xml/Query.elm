@@ -204,6 +204,9 @@ tags tagName node =
         FloatNode _ ->
             []
 
+        NullNode ->
+            []
+
         DocType _ _ ->
             []
 
@@ -240,6 +243,9 @@ contains contents node =
                 False
 
             FloatNode _ ->
+                False
+
+            NullNode ->
                 False
 
             DocType _ _ ->

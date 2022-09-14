@@ -355,11 +355,10 @@ all =
                         (JD.decodeString xmlDecoder """{"a":true}""")
                         (Ok <| Tag "a" Dict.empty (BoolNode True))
             , test "decodes null" <|
-                -- TODO how should it behave?
                 \_ ->
                     Expect.equal
                         (JD.decodeString xmlDecoder """{"a":null}""")
-                        (Ok <| Tag "a" Dict.empty (StrNode ""))
+                        (Ok <| Tag "a" Dict.empty (Object []))
             , test "decodes plain list" <|
                 \_ ->
                     Expect.equal
@@ -374,7 +373,7 @@ all =
                 \_ ->
                     Expect.equal
                         (JD.decodeString xmlDecoder """[null, 1]""")
-                        (Ok <| Object [ StrNode "", IntNode 1 ])
+                        (Ok <| Object [ Object [], IntNode 1 ])
             , test "decode plain object" <|
                 \_ ->
                     Expect.equal
@@ -392,7 +391,7 @@ all =
                         (Ok <|
                             Object
                                 [ Tag "a" Dict.empty (IntNode 1)
-                                , Tag "b" Dict.empty (StrNode "")
+                                , Tag "b" Dict.empty (Object [])
                                 ]
                         )
             ]
@@ -418,16 +417,38 @@ all =
                                 , ( "tag2", Dict.empty, null )
                                 ]
                         )
-            , test "encode object JSON object with one null field" <|
+            , test "encode JSON object with one null field" <|
                 \_ ->
                     Expect.equal
-                        "<tag1></tag1>\n<tag2></tag2>"
+                        "<tag1>x</tag1>\n<tag2></tag2>"
                         (encode 0 <|
                             jsonToXml <|
                                 JE.object
                                     [ ( "tag1", JE.string "x" )
                                     , ( "tag2", JE.null )
                                     ]
+                        )
+            , test "xmlDecoder decodes JSON object with exactly one null field" <|
+                \_ ->
+                    Expect.equal
+                        (Ok <| Tag "tag" Dict.empty (Object []))
+                        (JD.decodeValue xmlDecoder <|
+                            JE.object [ ( "tag", JE.null ) ]
+                        )
+            , test "xmlDecoder decodes JSON object with one null field" <|
+                \_ ->
+                    Expect.equal
+                        (Ok <|
+                            Object
+                                [ Tag "tag1" Dict.empty (StrNode "x")
+                                , Tag "tag2" Dict.empty (Object [])
+                                ]
+                        )
+                        (JD.decodeValue xmlDecoder <|
+                            JE.object
+                                [ ( "tag1", JE.string "x" )
+                                , ( "tag2", JE.null )
+                                ]
                         )
             ]
         , describe "XML character entities &xxx;"

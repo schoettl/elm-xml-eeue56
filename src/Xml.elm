@@ -187,9 +187,9 @@ xmlDecoder =
         , JD.map IntNode JD.int
         , JD.map FloatNode JD.float
         , JD.map BoolNode JD.bool
-        , JD.map StrNode (JD.null "") -- this leads to an empty tag which is better than nothing
 
-        -- , JD.map Object (JD.null []) -- would it be better if the tag is omitted completely, i.e. Object []?
+        -- This is the most explicit way to store a null value:
+        , JD.map Object (JD.null [])
         , JD.list (JD.lazy (\_ -> xmlDecoder))
             |> JD.andThen
                 (\list ->

@@ -33,8 +33,8 @@ defaultDecodeSettings =
 
 {-| Try and decode the props from a string
 -}
-decodeProps : String -> Result String Value
-decodeProps str =
+decodeProps : DecodeSettings -> String -> Result String Value
+decodeProps setts str =
     List.foldl
         (\decoder val ->
             case val of
@@ -45,11 +45,11 @@ decodeProps str =
                     decoder str
         )
         (Err "")
-        [ decodeBool, decodeInt, decodeFloat, decodeString ]
+        [ decodeNull setts, decodeBool setts, decodeInt, decodeFloat, decodeString ]
 
 
-parseProps : List String -> List ( String, Value )
-parseProps =
+parseProps : DecodeSettings -> List String -> List ( String, Value )
+parseProps setts =
     List.filterMap
         (\n ->
             case String.split "=" n of
@@ -60,7 +60,7 @@ parseProps =
                                 |> String.dropLeft 1
                                 |> String.dropRight 1
                     in
-                    case decodeProps withoutQuotes of
+                    case decodeProps setts withoutQuotes of
                         Err _ ->
                             Nothing
 
@@ -77,8 +77,8 @@ propRegex =
     Regex.fromString " .+?=\".+?\""
 
 
-findProps : List String -> Dict.Dict String Value
-findProps =
+findProps : DecodeSettings -> List String -> Dict.Dict String Value
+findProps setts =
     case propRegex of
         Nothing ->
             \_ -> Dict.empty
@@ -90,12 +90,12 @@ findProps =
                 >> (\s -> " " ++ s)
                 >> Regex.find regex
                 >> List.map (.match >> String.trim)
-                >> parseProps
+                >> parseProps setts
                 >> Dict.fromList
 
 
-parseSlice : Int -> Int -> String -> Result String ( Value, Int )
-parseSlice first firstClose trimmed =
+parseSlice : DecodeSettings -> Int -> Int -> String -> Result String ( Value, Int )
+parseSlice setts first firstClose trimmed =
     let
         beforeClose =
             String.slice (first + 1) firstClose trimmed
@@ -110,7 +110,7 @@ parseSlice first firstClose trimmed =
                 |> Maybe.withDefault ""
 
         props =
-            findProps words
+            findProps setts words
 
         closeTag =
             "</" ++ tagName ++ ">"
@@ -171,8 +171,8 @@ parseSlice first firstClose trimmed =
                     Ok ( Tag tagName props v, correctCloseTag + String.length closeTag )
 
 
-actualDecode : String -> Result String (List Value)
-actualDecode text =
+actualDecode : DecodeSettings -> String -> Result String (List Value)
+actualDecode setts text =
     let
         openIndexes =
             String.indexes "<" text
@@ -182,10 +182,10 @@ actualDecode text =
     in
     case ( openIndexes, closeIndexes ) of
         ( first :: restFirst, firstClose :: restFirstClose ) ->
-            parseSlice first firstClose text
+            parseSlice setts first firstClose text
                 |> Result.andThen
                     (\( foundValue, firstCloseTag ) ->
-                        case actualDecode (String.slice firstCloseTag (String.length text + 1) text) of
+                        case actualDecode setts (String.slice firstCloseTag (String.length text + 1) text) of
                             Err err ->
                                 if err == "Nothing left" then
                                     Ok [ foundValue ]
@@ -234,7 +234,7 @@ decodeWith setts text =
             Ok (Object [])
 
         trimmed ->
-            actualDecode trimmed
+            actualDecode setts trimmed
                 |> Result.map Object
 
 
@@ -304,18 +304,31 @@ decodeFloat str =
 
 {-| Decode a bool
 -}
-decodeBool : String -> Result String Value
-decodeBool str =
-    if str == "true" then
+decodeBool : DecodeSettings -> String -> Result String Value
+decodeBool setts str =
+    if List.member str setts.trueValues then
         BoolNode True
             |> Ok
 
-    else if str == "false" then
+    else if List.member str setts.falseValues then
         BoolNode False
             |> Ok
 
     else
-        Err "Not a bool"
+        Err <|
+            "Not a bool. Valid bool values are: "
+                ++ String.concat (List.intersperse ", " (List.concat [ setts.falseValues, setts.trueValues ]))
+
+
+{-| Decode a null
+-}
+decodeNull : DecodeSettings -> String -> Result String Value
+decodeNull setts str =
+    if List.member str setts.nullValues then
+        Ok NullNode
+
+    else
+        Err "Not a null."
 
 
 {-| Decode children from a string

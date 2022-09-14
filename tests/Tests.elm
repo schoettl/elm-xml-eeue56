@@ -333,6 +333,18 @@ all =
                         object [ ( "tagname", Dict.empty, list [] ) ]
                 in
                 Expect.equal (decode "<tagname/>") (Ok val)
+        , describe "Decode test"
+            [ test "decodes emtpy string" <|
+                \_ ->
+                    Expect.equal
+                        (decode "")
+                        (Ok <| Object [])
+            , test "decodes whitespace-only string" <|
+                \_ ->
+                    Expect.equal
+                        (decode "  ")
+                        (Ok <| Object [])
+            ]
         , describe "Test xmlDecoder to convert JSON to XML"
             [ test "decodes string" <|
                 \_ ->

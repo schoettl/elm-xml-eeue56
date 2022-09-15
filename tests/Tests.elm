@@ -436,14 +436,13 @@ all =
                 \_ ->
                     Expect.equal
                         (JD.decodeString xmlDecoder """{"a":null}""")
-                        (Ok <| Tag "a" Dict.empty (Object []))
+                        (Ok <| Tag "a" Dict.empty NullNode)
             , test "decodes plain list" <|
                 \_ ->
                     Expect.equal
                         (JD.decodeString xmlDecoder """["a", 1]""")
                         (Ok <| Object [ StrNode "a", IntNode 1 ])
             , test "decodes empty list" <|
-                -- same as "null"! not good!
                 \_ ->
                     Expect.equal
                         (JD.decodeString xmlDecoder "[]")
@@ -457,7 +456,7 @@ all =
                 \_ ->
                     Expect.equal
                         (JD.decodeString xmlDecoder """[null, 1]""")
-                        (Ok <| Object [ Object [], IntNode 1 ])
+                        (Ok <| Object [ NullNode, IntNode 1 ])
             , test "decode plain object" <|
                 \_ ->
                     Expect.equal
@@ -475,12 +474,11 @@ all =
                         (Ok <|
                             Object
                                 [ Tag "a" Dict.empty (IntNode 1)
-                                , Tag "b" Dict.empty (Object [])
+                                , Tag "b" Dict.empty NullNode
                                 ]
                         )
             ]
-        , describe
-            "Find bug: json object with many fields is encoded as '' if one field is null"
+        , describe "Find bug: json object with many fields is encoded as '' if one field is null"
             [ test "object with one empty tag" <|
                 \_ ->
                     Expect.equal
@@ -504,7 +502,7 @@ all =
             , test "encode JSON object with one null field" <|
                 \_ ->
                     Expect.equal
-                        "<tag1>x</tag1>\n<tag2></tag2>"
+                        "<tag1>x</tag1>\n"
                         (encode 0 <|
                             jsonToXml <|
                                 JE.object
@@ -515,7 +513,7 @@ all =
             , test "xmlDecoder decodes JSON object with exactly one null field" <|
                 \_ ->
                     Expect.equal
-                        (Ok <| Tag "tag" Dict.empty (Object []))
+                        (Ok <| Tag "tag" Dict.empty NullNode)
                         (JD.decodeValue xmlDecoder <|
                             JE.object [ ( "tag", JE.null ) ]
                         )
@@ -525,7 +523,7 @@ all =
                         (Ok <|
                             Object
                                 [ Tag "tag1" Dict.empty (StrNode "x")
-                                , Tag "tag2" Dict.empty (Object [])
+                                , Tag "tag2" Dict.empty NullNode
                                 ]
                         )
                         (JD.decodeValue xmlDecoder <|

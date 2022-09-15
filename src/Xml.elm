@@ -193,7 +193,7 @@ xmlDecoder =
         , JD.map BoolNode JD.bool
 
         -- This is the most explicit way to store a null value:
-        , JD.map Object (JD.null [])
+        , JD.map (\_ -> NullNode) (JD.null 0)
         , JD.list (JD.lazy (\_ -> xmlDecoder))
             |> JD.andThen
                 (\list ->

@@ -325,6 +325,32 @@ all =
                         { defaultEncodeSettings | omitNullTag = False }
                 in
                 Expect.equal (encodeWith setts 0 val) "<tagname></tagname>"
+        , describe "Test decode settings"
+            [ test "Decode bool True" <|
+                \_ ->
+                    Expect.equal
+                        (decodeBool
+                            { defaultDecodeSettings | trueValues = [ "1" ] }
+                            "1"
+                        )
+                        (Ok (bool True))
+            , test "Decode bool False" <|
+                \_ ->
+                    Expect.equal
+                        (decodeBool
+                            { defaultDecodeSettings | falseValues = [ "0", "False" ] }
+                            "False"
+                        )
+                        (Ok (bool False))
+            , test "Decode null" <|
+                \_ ->
+                    Expect.equal
+                        (decodeNull
+                            { defaultDecodeSettings | nullValues = [ "nil", "null" ] }
+                            "nil"
+                        )
+                        (Ok NullNode)
+            ]
         , describe "Test attributes"
             [ test "Decode tag with single-quoted attribute value" <|
                 \_ ->
@@ -358,7 +384,7 @@ all =
                             object [ ( "tagname", Dict.fromList [ ( "attr", NullNode ) ], list [] ) ]
                     in
                     Expect.equal (decode "<tagname attr=\"\" ></tagname>") (Ok val)
-            , test "… therefore, decode attribute value with double-space did not work before I fixed it" <|
+            , test "Decode attribute value with double-space works" <|
                 \_ ->
                     let
                         val =

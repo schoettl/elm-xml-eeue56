@@ -2,6 +2,7 @@ module Xml.Decode exposing
     ( decode
     , decodeInt, decodeFloat, decodeString, decodeBool
     , decodeChildren
+    , decodeNull, decodeWith, defaultDecodeSettings
     )
 
 {-|

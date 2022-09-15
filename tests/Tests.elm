@@ -301,8 +301,32 @@ all =
                         object [ ( "tagname", Dict.fromList [ ( "attr", string "&<>\"&amp;&lt;&gt;&quot;" ) ], string "x" ) ]
                 in
                 Expect.equal (decode <| encode 0 val) (Ok val)
-        , skip <|
-            test "Decode tag with single-quoted attribute value" <|
+        , test "Encode tag with NullNode given omitNullTag" <|
+            \_ ->
+                let
+                    val =
+                        Tag "tagname" Dict.empty NullNode
+                in
+                Expect.equal (encode 0 val) ""
+        , test "Encode tag with NullNode but also with attributes given omitNullTag" <|
+            \_ ->
+                let
+                    val =
+                        Tag "tagname" (Dict.fromList [ ( "attr", NullNode ) ]) NullNode
+                in
+                Expect.equal (encode 0 val) "<tagname attr=\"\"></tagname>"
+        , test "Encode tag with NullNode given not omitNullTag" <|
+            \_ ->
+                let
+                    val =
+                        Tag "tagname" Dict.empty NullNode
+
+                    setts =
+                        { defaultEncodeSettings | omitNullTag = False }
+                in
+                Expect.equal (encodeWith setts 0 val) "<tagname></tagname>"
+        , describe "Test attributes"
+            [ test "Decode tag with single-quoted attribute value" <|
                 \_ ->
                     let
                         val =
@@ -310,22 +334,38 @@ all =
                     in
                     Expect.equal (decode "<tagname attr='foo' ></tagname>")
                         (Ok val)
-        , skip <|
-            test "Decode empty attribute value" <|
+            , test "Encode attribute value" <|
                 \_ ->
                     let
                         val =
-                            object [ ( "tagname", Dict.fromList [ ( "attr", string "" ) ], list [] ) ]
+                            Tag "tagname" (Dict.fromList [ ( "attr", string "'" ) ]) (StrNode "")
+                    in
+                    Expect.equal (encode 0 val) "<tagname attr=\"&apos;\"></tagname>"
+            , test "Encode attribute value with single quotes" <|
+                \_ ->
+                    let
+                        val =
+                            Tag "tagname" (Dict.fromList [ ( "attr", string "\"" ) ]) (StrNode "")
+
+                        setts =
+                            { defaultEncodeSettings | attributeSingleQuoteInsteadOfDouble = True }
+                    in
+                    Expect.equal (encodeWith setts 0 val) "<tagname attr='&quot;'></tagname>"
+            , test "Decode empty attribute value" <|
+                \_ ->
+                    let
+                        val =
+                            object [ ( "tagname", Dict.fromList [ ( "attr", NullNode ) ], list [] ) ]
                     in
                     Expect.equal (decode "<tagname attr=\"\" ></tagname>") (Ok val)
-        , skip <|
-            test "Decode attribute value with certain special characters" <|
+            , test "… therefore, decode attribute value with double-space did not work before I fixed it" <|
                 \_ ->
                     let
                         val =
-                            object [ ( "tagname", Dict.fromList [ ( "attr", string "=  " ) ], list [] ) ]
+                            object [ ( "tagname", Dict.fromList [ ( "attr", string "  " ) ], list [] ) ]
                     in
-                    Expect.equal (decode "<tagname attr=\"=  \" ></tagname>") (Ok val)
+                    Expect.equal (decode "<tagname attr=\"  \" ></tagname>") (Ok val)
+            ]
         , test "Decode empty tag" <|
             \_ ->
                 let

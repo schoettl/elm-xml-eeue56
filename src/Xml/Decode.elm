@@ -65,7 +65,7 @@ parseProps setts =
                             Nothing
 
                         Ok v ->
-                            Just ( name, v )
+                            Just ( String.trim name, v )
 
                 _ ->
                     Nothing
@@ -74,24 +74,21 @@ parseProps setts =
 
 propRegex : Maybe Regex.Regex
 propRegex =
-    Regex.fromString " .+?=\".+?\""
+    Regex.fromString " .+?=(\".*?\"|'.*?')"
 
 
-findProps : DecodeSettings -> List String -> Dict.Dict String Value
-findProps setts =
+findProps : DecodeSettings -> String -> Dict.Dict String Value
+findProps setts beforeClose =
     case propRegex of
         Nothing ->
-            \_ -> Dict.empty
+            Dict.empty
 
         Just regex ->
-            List.tail
-                >> Maybe.withDefault []
-                >> String.join " "
-                >> (\s -> " " ++ s)
-                >> Regex.find regex
-                >> List.map (.match >> String.trim)
-                >> parseProps setts
-                >> Dict.fromList
+            beforeClose
+                |> Regex.find regex
+                |> List.map .match
+                |> parseProps setts
+                |> Dict.fromList
 
 
 parseSlice : DecodeSettings -> Int -> Int -> String -> Result String ( Value, Int )
@@ -110,7 +107,7 @@ parseSlice setts first firstClose trimmed =
                 |> Maybe.withDefault ""
 
         props =
-            findProps setts words
+            findProps setts beforeClose
 
         closeTag =
             "</" ++ tagName ++ ">"

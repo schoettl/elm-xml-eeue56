@@ -1,6 +1,7 @@
 module Xml.Encode exposing
     ( encode
     , string, int, float, bool, object, null, list
+    , defaultEncodeSettings, encodeWith
     )
 
 {-|
@@ -23,7 +24,8 @@ type alias EncodeSettings =
     { nullValue : String -- if not omitNullTag, encode NullNode like this
     , trueValue : String -- encode True like this
     , falseValue : String -- encode False like this
-    , omitNullTag : Bool -- omit a tag if its only content is a NullNode
+    , omitNullTag : Bool -- omit a tag if it has no attributes and its only content is a NullNode
+    , attributeSingleQuoteInsteadOfDouble : Bool
     }
 
 
@@ -32,6 +34,7 @@ defaultEncodeSettings =
     , trueValue = "true"
     , falseValue = "false"
     , omitNullTag = True
+    , attributeSingleQuoteInsteadOfDouble = False
     }
 
 
@@ -65,8 +68,16 @@ propToString setts value =
 
 propsToString : EncodeSettings -> Dict String Value -> String
 propsToString setts props =
+    let
+        quote =
+            if setts.attributeSingleQuoteInsteadOfDouble then
+                "'"
+
+            else
+                "\""
+    in
     Dict.toList props
-        |> List.map (\( key, value ) -> key ++ "=\"" ++ propToString setts value ++ "\"")
+        |> List.map (\( key, value ) -> key ++ "=" ++ quote ++ propToString setts value ++ quote)
         |> String.join " "
         |> (\x ->
                 if String.length x > 0 then
@@ -97,7 +108,7 @@ valueToString : EncodeSettings -> Int -> Int -> Value -> String
 valueToString setts level indent value =
     case value of
         Tag name props nextValue ->
-            if setts.omitNullTag && nextValue == NullNode then
+            if setts.omitNullTag && Dict.isEmpty props && nextValue == NullNode then
                 ""
 
             else

@@ -138,6 +138,9 @@ Renamed from xmlToJson to force a bump to version 2.0.
     xmlToJson2 (DocType "" Dict.empty)
     --> Json.null
 
+    xmlToJson2 NullNode
+    --> Json.null
+
 -}
 xmlToJson2 : Value -> Json.Value
 xmlToJson2 xml =

@@ -2,7 +2,7 @@ module Xml.Decode exposing
     ( decode
     , decodeInt, decodeFloat, decodeString, decodeBool
     , decodeChildren
-    , decodeNull, decodeWith, defaultDecodeSettings
+    , decodeBoolWith, decodeFloatWith, decodeIntWith, decodeNull, decodeWith, defaultDecodeSettings
     )
 
 {-|
@@ -25,11 +25,16 @@ type alias DecodeSettings =
     { nullValues : List String
     , trueValues : List String
     , falseValues : List String
+    , parseNumbers : Bool
     }
 
 
 defaultDecodeSettings =
-    { nullValues = [ "" ], trueValues = [ "true" ], falseValues = [ "false" ] }
+    { nullValues = [ "" ]
+    , trueValues = [ "true" ]
+    , falseValues = [ "false" ]
+    , parseNumbers = True
+    }
 
 
 {-| Try and decode the props from a string
@@ -46,7 +51,7 @@ decodeProps setts str =
                     decoder str
         )
         (Err "")
-        [ decodeNull setts, decodeBool setts, decodeInt, decodeFloat, decodeString ]
+        [ decodeNull setts, decodeBoolWith setts, decodeIntWith setts, decodeFloatWith setts, decodeString ]
 
 
 parseProps : DecodeSettings -> List String -> List ( String, Value )
@@ -161,7 +166,7 @@ parseSlice setts first firstClose trimmed =
                 contents =
                     String.slice (firstClose + 1) correctCloseTag trimmed
             in
-            case decodeChildren contents of
+            case decodeChildren setts contents of
                 Err s ->
                     Err s
 
@@ -253,6 +258,11 @@ decodeString str =
         |> Ok
 
 
+errNumberParsingDisabled : Result String Value
+errNumberParsingDisabled =
+    Err "number parsing is disabled"
+
+
 {-| Decode a int
 
     import Xml exposing (Value(..))
@@ -265,14 +275,23 @@ decodeString str =
 
 -}
 decodeInt : String -> Result String Value
-decodeInt str =
-    case String.toInt str of
-        Nothing ->
-            Err <| "could not convert string '" ++ str ++ "' to an Int"
+decodeInt =
+    decodeIntWith defaultDecodeSettings
 
-        Just v ->
-            IntNode v
-                |> Ok
+
+decodeIntWith : DecodeSettings -> String -> Result String Value
+decodeIntWith { parseNumbers } str =
+    if not parseNumbers then
+        errNumberParsingDisabled
+
+    else
+        case String.toInt str of
+            Nothing ->
+                Err <| "could not convert string '" ++ str ++ "' to an Int"
+
+            Just v ->
+                IntNode v
+                    |> Ok
 
 
 {-| Decode a float
@@ -290,20 +309,34 @@ decodeInt str =
 
 -}
 decodeFloat : String -> Result String Value
-decodeFloat str =
-    case String.toFloat str of
-        Nothing ->
-            Err <| "could not convert string '" ++ str ++ "' to a Float"
+decodeFloat =
+    decodeFloatWith defaultDecodeSettings
 
-        Just v ->
-            FloatNode v
-                |> Ok
+
+decodeFloatWith : DecodeSettings -> String -> Result String Value
+decodeFloatWith { parseNumbers } str =
+    if not parseNumbers then
+        errNumberParsingDisabled
+
+    else
+        case String.toFloat str of
+            Nothing ->
+                Err <| "could not convert string '" ++ str ++ "' to a Float"
+
+            Just v ->
+                FloatNode v
+                    |> Ok
 
 
 {-| Decode a bool
 -}
-decodeBool : DecodeSettings -> String -> Result String Value
-decodeBool setts str =
+decodeBool : String -> Result String Value
+decodeBool =
+    decodeBoolWith defaultDecodeSettings
+
+
+decodeBoolWith : DecodeSettings -> String -> Result String Value
+decodeBoolWith setts str =
     if List.member str setts.trueValues then
         BoolNode True
             |> Ok
@@ -334,12 +367,12 @@ decodeNull setts str =
     import Dict
     import Xml exposing (Value(..))
 
-    decodeChildren "<name>hello</name>"
+    decodeChildren defaultDecodeSettings "<name>hello</name>"
     --> Ok (Object [Tag "name" Dict.empty (StrNode "hello")] )
 
 -}
-decodeChildren : String -> Result String Value
-decodeChildren str =
+decodeChildren : DecodeSettings -> String -> Result String Value
+decodeChildren setts str =
     List.foldl
         (\decoder val ->
             case val of
@@ -350,4 +383,4 @@ decodeChildren str =
                     decoder str
         )
         (Err "")
-        [ decode, decodeInt, decodeFloat, decodeString ]
+        [ decode, decodeIntWith setts, decodeFloatWith setts, decodeString ]

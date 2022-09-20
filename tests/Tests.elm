@@ -329,7 +329,7 @@ all =
             [ test "Decode bool True" <|
                 \_ ->
                     Expect.equal
-                        (decodeBool
+                        (decodeBoolWith
                             { defaultDecodeSettings | trueValues = [ "1" ] }
                             "1"
                         )
@@ -337,7 +337,7 @@ all =
             , test "Decode bool False" <|
                 \_ ->
                     Expect.equal
-                        (decodeBool
+                        (decodeBoolWith
                             { defaultDecodeSettings | falseValues = [ "0", "False" ] }
                             "False"
                         )
@@ -350,6 +350,30 @@ all =
                             "nil"
                         )
                         (Ok NullNode)
+            , test "Do not decode integers if not parseNumbers" <|
+                \_ ->
+                    Expect.equal
+                        (decodeIntWith
+                            { defaultDecodeSettings | parseNumbers = False }
+                            "1"
+                        )
+                        (Err "number parsing is disabled")
+            , test "Do not decode floats if not parseNumbers" <|
+                \_ ->
+                    Expect.equal
+                        (decodeFloatWith
+                            { defaultDecodeSettings | parseNumbers = False }
+                            "1.0"
+                        )
+                        (Err "number parsing is disabled")
+            , test "Do not decode numbers if not parseNumbers" <|
+                \_ ->
+                    Expect.equal
+                        (decodeWith
+                            { defaultDecodeSettings | parseNumbers = False }
+                            "<a>1</a>"
+                        )
+                        (Ok <| Object [ Tag "a" Dict.empty (StrNode "1") ])
             ]
         , describe "Test attributes"
             [ test "Decode tag with single-quoted attribute value" <|

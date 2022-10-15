@@ -9,6 +9,7 @@ module Xml exposing
 @docs Value
 
 @docs foldl, map, xmlToJson2, jsonToXml
+@docs decodeXmlEntities, encodeXmlEntities, xmlDecoder
 
 -}
 

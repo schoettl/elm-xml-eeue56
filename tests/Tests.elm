@@ -301,8 +301,82 @@ all =
                         object [ ( "tagname", Dict.fromList [ ( "attr", string "&<>\"&amp;&lt;&gt;&quot;" ) ], string "x" ) ]
                 in
                 Expect.equal (decode <| encode 0 val) (Ok val)
-        , skip <|
-            test "Decode tag with single-quoted attribute value" <|
+        , test "Encode tag with NullNode given omitNullTag" <|
+            \_ ->
+                let
+                    val =
+                        Tag "tagname" Dict.empty NullNode
+                in
+                Expect.equal (encode 0 val) ""
+        , test "Encode tag with NullNode but also with attributes given omitNullTag" <|
+            \_ ->
+                let
+                    val =
+                        Tag "tagname" (Dict.fromList [ ( "attr", NullNode ) ]) NullNode
+                in
+                Expect.equal (encode 0 val) "<tagname attr=\"\"></tagname>"
+        , test "Encode tag with NullNode given not omitNullTag" <|
+            \_ ->
+                let
+                    val =
+                        Tag "tagname" Dict.empty NullNode
+
+                    setts =
+                        { defaultEncodeSettings | omitNullTag = False }
+                in
+                Expect.equal (encodeWith setts 0 val) "<tagname></tagname>"
+        , describe "Test decode settings"
+            [ test "Decode bool True" <|
+                \_ ->
+                    Expect.equal
+                        (decodeBoolWith
+                            { defaultDecodeSettings | trueValues = [ "1" ] }
+                            "1"
+                        )
+                        (Ok (bool True))
+            , test "Decode bool False" <|
+                \_ ->
+                    Expect.equal
+                        (decodeBoolWith
+                            { defaultDecodeSettings | falseValues = [ "0", "False" ] }
+                            "False"
+                        )
+                        (Ok (bool False))
+            , test "Decode null" <|
+                \_ ->
+                    Expect.equal
+                        (decodeNull
+                            { defaultDecodeSettings | nullValues = [ "nil", "null" ] }
+                            "nil"
+                        )
+                        (Ok NullNode)
+            , test "Do not decode integers if not parseNumbers" <|
+                \_ ->
+                    Expect.equal
+                        (decodeIntWith
+                            { defaultDecodeSettings | parseNumbers = False }
+                            "1"
+                        )
+                        (Err "number parsing is disabled")
+            , test "Do not decode floats if not parseNumbers" <|
+                \_ ->
+                    Expect.equal
+                        (decodeFloatWith
+                            { defaultDecodeSettings | parseNumbers = False }
+                            "1.0"
+                        )
+                        (Err "number parsing is disabled")
+            , test "Do not decode numbers if not parseNumbers" <|
+                \_ ->
+                    Expect.equal
+                        (decodeWith
+                            { defaultDecodeSettings | parseNumbers = False }
+                            "<a>1</a>"
+                        )
+                        (Ok <| Object [ Tag "a" Dict.empty (StrNode "1") ])
+            ]
+        , describe "Test attributes"
+            [ test "Decode tag with single-quoted attribute value" <|
                 \_ ->
                     let
                         val =
@@ -310,22 +384,38 @@ all =
                     in
                     Expect.equal (decode "<tagname attr='foo' ></tagname>")
                         (Ok val)
-        , skip <|
-            test "Decode empty attribute value" <|
+            , test "Encode attribute value" <|
                 \_ ->
                     let
                         val =
-                            object [ ( "tagname", Dict.fromList [ ( "attr", string "" ) ], list [] ) ]
+                            Tag "tagname" (Dict.fromList [ ( "attr", string "'" ) ]) (StrNode "")
+                    in
+                    Expect.equal (encode 0 val) "<tagname attr=\"&apos;\"></tagname>"
+            , test "Encode attribute value with single quotes" <|
+                \_ ->
+                    let
+                        val =
+                            Tag "tagname" (Dict.fromList [ ( "attr", string "\"" ) ]) (StrNode "")
+
+                        setts =
+                            { defaultEncodeSettings | attributeSingleQuoteInsteadOfDouble = True }
+                    in
+                    Expect.equal (encodeWith setts 0 val) "<tagname attr='&quot;'></tagname>"
+            , test "Decode empty attribute value" <|
+                \_ ->
+                    let
+                        val =
+                            object [ ( "tagname", Dict.fromList [ ( "attr", NullNode ) ], list [] ) ]
                     in
                     Expect.equal (decode "<tagname attr=\"\" ></tagname>") (Ok val)
-        , skip <|
-            test "Decode attribute value with certain special characters" <|
+            , test "Decode attribute value with double-space works" <|
                 \_ ->
                     let
                         val =
-                            object [ ( "tagname", Dict.fromList [ ( "attr", string "=  " ) ], list [] ) ]
+                            object [ ( "tagname", Dict.fromList [ ( "attr", string "  " ) ], list [] ) ]
                     in
-                    Expect.equal (decode "<tagname attr=\"=  \" ></tagname>") (Ok val)
+                    Expect.equal (decode "<tagname attr=\"  \" ></tagname>") (Ok val)
+            ]
         , test "Decode empty tag" <|
             \_ ->
                 let
@@ -333,6 +423,18 @@ all =
                         object [ ( "tagname", Dict.empty, list [] ) ]
                 in
                 Expect.equal (decode "<tagname/>") (Ok val)
+        , describe "Decode test"
+            [ test "decodes emtpy string" <|
+                \_ ->
+                    Expect.equal
+                        (decode "")
+                        (Ok <| Object [])
+            , test "decodes whitespace-only string" <|
+                \_ ->
+                    Expect.equal
+                        (decode "  ")
+                        (Ok <| Object [])
+            ]
         , describe "Test xmlDecoder to convert JSON to XML"
             [ test "decodes string" <|
                 \_ ->
@@ -358,12 +460,17 @@ all =
                 \_ ->
                     Expect.equal
                         (JD.decodeString xmlDecoder """{"a":null}""")
-                        (Ok <| Tag "a" Dict.empty (Object []))
+                        (Ok <| Tag "a" Dict.empty NullNode)
             , test "decodes plain list" <|
                 \_ ->
                     Expect.equal
                         (JD.decodeString xmlDecoder """["a", 1]""")
                         (Ok <| Object [ StrNode "a", IntNode 1 ])
+            , test "decodes empty list" <|
+                \_ ->
+                    Expect.equal
+                        (JD.decodeString xmlDecoder "[]")
+                        (Ok <| Object [])
             , test "decodes list inside a tag" <|
                 \_ ->
                     Expect.equal
@@ -373,7 +480,7 @@ all =
                 \_ ->
                     Expect.equal
                         (JD.decodeString xmlDecoder """[null, 1]""")
-                        (Ok <| Object [ Object [], IntNode 1 ])
+                        (Ok <| Object [ NullNode, IntNode 1 ])
             , test "decode plain object" <|
                 \_ ->
                     Expect.equal
@@ -391,12 +498,11 @@ all =
                         (Ok <|
                             Object
                                 [ Tag "a" Dict.empty (IntNode 1)
-                                , Tag "b" Dict.empty (Object [])
+                                , Tag "b" Dict.empty NullNode
                                 ]
                         )
             ]
-        , describe
-            "Find bug: json object with many fields is encoded as '' if one field is null"
+        , describe "Find bug: json object with many fields is encoded as '' if one field is null"
             [ test "object with one empty tag" <|
                 \_ ->
                     Expect.equal
@@ -420,7 +526,7 @@ all =
             , test "encode JSON object with one null field" <|
                 \_ ->
                     Expect.equal
-                        "<tag1>x</tag1>\n<tag2></tag2>"
+                        "<tag1>x</tag1>\n"
                         (encode 0 <|
                             jsonToXml <|
                                 JE.object
@@ -431,7 +537,7 @@ all =
             , test "xmlDecoder decodes JSON object with exactly one null field" <|
                 \_ ->
                     Expect.equal
-                        (Ok <| Tag "tag" Dict.empty (Object []))
+                        (Ok <| Tag "tag" Dict.empty NullNode)
                         (JD.decodeValue xmlDecoder <|
                             JE.object [ ( "tag", JE.null ) ]
                         )
@@ -441,7 +547,7 @@ all =
                         (Ok <|
                             Object
                                 [ Tag "tag1" Dict.empty (StrNode "x")
-                                , Tag "tag2" Dict.empty (Object [])
+                                , Tag "tag2" Dict.empty NullNode
                                 ]
                         )
                         (JD.decodeValue xmlDecoder <|

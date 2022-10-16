@@ -1,15 +1,32 @@
 module Xml exposing
     ( Value(..)
-    , foldl, map, xmlToJson2, jsonToXml
-    , decodeXmlEntities, encodeXmlEntities, xmlDecoder
+    , foldl, map
+    , xmlToJson2, jsonToXml, xmlDecoder
+    , decodeXmlEntities, encodeXmlEntities
     )
 
 {-| The main data structure along with some trivial helpers.
 
 @docs Value
 
-@docs foldl, map, xmlToJson2, jsonToXml
-@docs decodeXmlEntities, encodeXmlEntities, xmlDecoder
+@docs foldl, map
+
+
+# XML/JSON conversion
+
+This library can convert to and from `Json.Value`.
+
+@docs xmlToJson2, jsonToXml, xmlDecoder
+
+
+# XML character entities
+
+This library can encode and decode the five predefined XML character entities.
+Numeric character references and other named HTML entities (e.g. `&#x20ac;`
+or `&euro;`) are currently not supported.
+Please try to use UTF-8 / Unicode instead.
+
+@docs decodeXmlEntities, encodeXmlEntities
 
 -}
 
@@ -26,6 +43,7 @@ type Value
     | IntNode Int
     | FloatNode Float
     | BoolNode Bool
+    | NullNode
     | Object (List Value)
     | DocType String (Dict String Value)
 
@@ -138,6 +156,9 @@ Renamed from xmlToJson to force a bump to version 2.0.
     xmlToJson2 (DocType "" Dict.empty)
     --> Json.null
 
+    xmlToJson2 NullNode
+    --> Json.null
+
 -}
 xmlToJson2 : Value -> Json.Value
 xmlToJson2 xml =
@@ -172,6 +193,9 @@ xmlToJson2 xml =
         BoolNode bool ->
             Json.bool bool
 
+        NullNode ->
+            Json.null
+
         Object values ->
             Json.list xmlToJson2 values
 
@@ -190,7 +214,7 @@ xmlDecoder =
         , JD.map BoolNode JD.bool
 
         -- This is the most explicit way to store a null value:
-        , JD.map Object (JD.null [])
+        , JD.map (\_ -> NullNode) (JD.null 0)
         , JD.list (JD.lazy (\_ -> xmlDecoder))
             |> JD.andThen
                 (\list ->

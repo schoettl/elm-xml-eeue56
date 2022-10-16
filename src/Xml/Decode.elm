@@ -1,16 +1,19 @@
 module Xml.Decode exposing
-    ( decode
+    ( decode, decodeWith, DecodeSettings, defaultDecodeSettings
     , decodeInt, decodeFloat, decodeString, decodeBool
     , decodeChildren
+    , decodeBoolWith, decodeFloatWith, decodeIntWith, decodeNull
     )
 
 {-|
 
-@docs decode
+@docs decode, decodeWith, DecodeSettings, defaultDecodeSettings
 
 @docs decodeInt, decodeFloat, decodeString, decodeBool
 
 @docs decodeChildren
+
+@docs decodeBoolWith, decodeFloatWith, decodeIntWith, decodeNull
 
 -}
 
@@ -20,10 +23,38 @@ import Xml exposing (Value(..), decodeXmlEntities)
 import Xml.Encode as Encode
 
 
+{-| Settings used by `decodeWith`.
+
+The `*Values` fields define lists of possible values for the
+respecitve node types, e.g. `["true", "True"]` for `True`.
+
+`parseNumbers` specifies if numbers are parsed to
+`IntNode`/`FloatNode` or just `StrNode`.
+
+-}
+type alias DecodeSettings =
+    { nullValues : List String
+    , trueValues : List String
+    , falseValues : List String
+    , parseNumbers : Bool
+    }
+
+
+{-| Good default settings for `DecodeSettings`.
+-}
+defaultDecodeSettings : DecodeSettings
+defaultDecodeSettings =
+    { nullValues = [ "" ]
+    , trueValues = [ "true" ]
+    , falseValues = [ "false" ]
+    , parseNumbers = True
+    }
+
+
 {-| Try and decode the props from a string
 -}
-decodeProps : String -> Result String Value
-decodeProps str =
+decodeProps : DecodeSettings -> String -> Result String Value
+decodeProps setts str =
     List.foldl
         (\decoder val ->
             case val of
@@ -34,11 +65,11 @@ decodeProps str =
                     decoder str
         )
         (Err "")
-        [ decodeBool, decodeInt, decodeFloat, decodeString ]
+        [ decodeNull setts, decodeBoolWith setts, decodeIntWith setts, decodeFloatWith setts, decodeString ]
 
 
-parseProps : List String -> List ( String, Value )
-parseProps =
+parseProps : DecodeSettings -> List String -> List ( String, Value )
+parseProps setts =
     List.filterMap
         (\n ->
             case String.split "=" n of
@@ -49,12 +80,12 @@ parseProps =
                                 |> String.dropLeft 1
                                 |> String.dropRight 1
                     in
-                    case decodeProps withoutQuotes of
+                    case decodeProps setts withoutQuotes of
                         Err _ ->
                             Nothing
 
                         Ok v ->
-                            Just ( name, v )
+                            Just ( String.trim name, v )
 
                 _ ->
                     Nothing
@@ -63,28 +94,25 @@ parseProps =
 
 propRegex : Maybe Regex.Regex
 propRegex =
-    Regex.fromString " .+?=\".+?\""
+    Regex.fromString " .+?=(\".*?\"|'.*?')"
 
 
-findProps : List String -> Dict.Dict String Value
-findProps =
+findProps : DecodeSettings -> String -> Dict.Dict String Value
+findProps setts beforeClose =
     case propRegex of
         Nothing ->
-            \_ -> Dict.empty
+            Dict.empty
 
         Just regex ->
-            List.tail
-                >> Maybe.withDefault []
-                >> String.join " "
-                >> (\s -> " " ++ s)
-                >> Regex.find regex
-                >> List.map (.match >> String.trim)
-                >> parseProps
-                >> Dict.fromList
+            beforeClose
+                |> Regex.find regex
+                |> List.map .match
+                |> parseProps setts
+                |> Dict.fromList
 
 
-parseSlice : Int -> Int -> String -> Result String ( Value, Int )
-parseSlice first firstClose trimmed =
+parseSlice : DecodeSettings -> Int -> Int -> String -> Result String ( Value, Int )
+parseSlice setts first firstClose trimmed =
     let
         beforeClose =
             String.slice (first + 1) firstClose trimmed
@@ -99,7 +127,7 @@ parseSlice first firstClose trimmed =
                 |> Maybe.withDefault ""
 
         props =
-            findProps words
+            findProps setts beforeClose
 
         closeTag =
             "</" ++ tagName ++ ">"
@@ -152,7 +180,7 @@ parseSlice first firstClose trimmed =
                 contents =
                     String.slice (firstClose + 1) correctCloseTag trimmed
             in
-            case decodeChildren contents of
+            case decodeChildren setts contents of
                 Err s ->
                     Err s
 
@@ -160,8 +188,8 @@ parseSlice first firstClose trimmed =
                     Ok ( Tag tagName props v, correctCloseTag + String.length closeTag )
 
 
-actualDecode : String -> Result String (List Value)
-actualDecode text =
+actualDecode : DecodeSettings -> String -> Result String (List Value)
+actualDecode setts text =
     let
         openIndexes =
             String.indexes "<" text
@@ -171,10 +199,10 @@ actualDecode text =
     in
     case ( openIndexes, closeIndexes ) of
         ( first :: restFirst, firstClose :: restFirstClose ) ->
-            parseSlice first firstClose text
+            parseSlice setts first firstClose text
                 |> Result.andThen
                     (\( foundValue, firstCloseTag ) ->
-                        case actualDecode (String.slice firstCloseTag (String.length text + 1) text) of
+                        case actualDecode setts (String.slice firstCloseTag (String.length text + 1) text) of
                             Err err ->
                                 if err == "Nothing left" then
                                     Ok [ foundValue ]
@@ -202,13 +230,28 @@ actualDecode text =
 
 -}
 decode : String -> Result String Value
-decode text =
+decode =
+    decodeWith defaultDecodeSettings
+
+
+{-| Try to decode a string and turn it into an XML value
+
+    import Xml exposing(Value(..))
+    import Xml.Encode exposing (null)
+    import Dict
+
+    decode "<name></name>"
+    --> Ok (Object [Tag "name" Dict.empty null])
+
+-}
+decodeWith : DecodeSettings -> String -> Result String Value
+decodeWith setts text =
     case String.trim text of
         "" ->
             Ok (Object [])
 
         trimmed ->
-            actualDecode trimmed
+            actualDecode setts trimmed
                 |> Result.map Object
 
 
@@ -229,7 +272,12 @@ decodeString str =
         |> Ok
 
 
-{-| Decode a int
+errNumberParsingDisabled : Result String Value
+errNumberParsingDisabled =
+    Err "number parsing is disabled"
+
+
+{-| Decode an int
 
     import Xml exposing (Value(..))
 
@@ -241,14 +289,25 @@ decodeString str =
 
 -}
 decodeInt : String -> Result String Value
-decodeInt str =
-    case String.toInt str of
-        Nothing ->
-            Err <| "could not convert string '" ++ str ++ "' to an Int"
+decodeInt =
+    decodeIntWith defaultDecodeSettings
 
-        Just v ->
-            IntNode v
-                |> Ok
+
+{-| Decode an int with settings
+-}
+decodeIntWith : DecodeSettings -> String -> Result String Value
+decodeIntWith { parseNumbers } str =
+    if not parseNumbers then
+        errNumberParsingDisabled
+
+    else
+        case String.toInt str of
+            Nothing ->
+                Err <| "could not convert string '" ++ str ++ "' to an Int"
+
+            Just v ->
+                IntNode v
+                    |> Ok
 
 
 {-| Decode a float
@@ -266,30 +325,61 @@ decodeInt str =
 
 -}
 decodeFloat : String -> Result String Value
-decodeFloat str =
-    case String.toFloat str of
-        Nothing ->
-            Err <| "could not convert string '" ++ str ++ "' to a Float"
+decodeFloat =
+    decodeFloatWith defaultDecodeSettings
 
-        Just v ->
-            FloatNode v
-                |> Ok
+
+{-| Decode a float with settings
+-}
+decodeFloatWith : DecodeSettings -> String -> Result String Value
+decodeFloatWith { parseNumbers } str =
+    if not parseNumbers then
+        errNumberParsingDisabled
+
+    else
+        case String.toFloat str of
+            Nothing ->
+                Err <| "could not convert string '" ++ str ++ "' to a Float"
+
+            Just v ->
+                FloatNode v
+                    |> Ok
 
 
 {-| Decode a bool
 -}
 decodeBool : String -> Result String Value
-decodeBool str =
-    if str == "true" then
+decodeBool =
+    decodeBoolWith defaultDecodeSettings
+
+
+{-| Decode a bool with settings
+-}
+decodeBoolWith : DecodeSettings -> String -> Result String Value
+decodeBoolWith setts str =
+    if List.member str setts.trueValues then
         BoolNode True
             |> Ok
 
-    else if str == "false" then
+    else if List.member str setts.falseValues then
         BoolNode False
             |> Ok
 
     else
-        Err "Not a bool"
+        Err <|
+            "Not a bool. Valid bool values are: "
+                ++ String.concat (List.intersperse ", " (List.concat [ setts.falseValues, setts.trueValues ]))
+
+
+{-| Decode a null
+-}
+decodeNull : DecodeSettings -> String -> Result String Value
+decodeNull setts str =
+    if List.member str setts.nullValues then
+        Ok NullNode
+
+    else
+        Err "Not a null."
 
 
 {-| Decode children from a string
@@ -297,12 +387,12 @@ decodeBool str =
     import Dict
     import Xml exposing (Value(..))
 
-    decodeChildren "<name>hello</name>"
+    decodeChildren defaultDecodeSettings "<name>hello</name>"
     --> Ok (Object [Tag "name" Dict.empty (StrNode "hello")] )
 
 -}
-decodeChildren : String -> Result String Value
-decodeChildren str =
+decodeChildren : DecodeSettings -> String -> Result String Value
+decodeChildren setts str =
     List.foldl
         (\decoder val ->
             case val of
@@ -313,4 +403,4 @@ decodeChildren str =
                     decoder str
         )
         (Err "")
-        [ decode, decodeInt, decodeFloat, decodeString ]
+        [ decode, decodeIntWith setts, decodeFloatWith setts, decodeString ]

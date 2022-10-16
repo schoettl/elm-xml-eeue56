@@ -1,6 +1,7 @@
 module Xml exposing
     ( Value(..)
     , foldl, map, xmlToJson2, jsonToXml
+    , decodeXmlEntities, encodeXmlEntities, xmlDecoder
     )
 
 {-| The main data structure along with some trivial helpers.
@@ -8,6 +9,7 @@ module Xml exposing
 @docs Value
 
 @docs foldl, map, xmlToJson2, jsonToXml
+@docs decodeXmlEntities, encodeXmlEntities, xmlDecoder
 
 -}
 
@@ -63,6 +65,46 @@ foldl fn init value =
 
         anything ->
             fn anything init
+
+
+{-| Encode string with XML entities
+
+    encodeXmlEntities "<hello>"
+    --> "&lt;hello&gt;"
+
+-}
+encodeXmlEntities : String -> String
+encodeXmlEntities s =
+    List.foldr (\( x, y ) z -> String.replace (String.fromChar x) ("&" ++ y ++ ";") z) s predefinedEntities
+
+
+{-| Decode string with XML entities
+
+    decodeXmlEntities "&lt;hello&gt;"
+    --> "<hello>"
+
+    Do not decode entities twice!
+
+    decodeXmlEntities "&amp;lt;hello&gt;"
+    --> "&lt;hello>"
+
+-}
+decodeXmlEntities : String -> String
+decodeXmlEntities s =
+    List.foldl (\( x, y ) z -> String.replace ("&" ++ y ++ ";") (String.fromChar x) z) s predefinedEntities
+
+
+predefinedEntities : List ( Char, String )
+predefinedEntities =
+    -- https://en.wikipedia.org/wiki/List_of_XML_and_HTML_character_entity_references
+    [ ( '"', "quot" )
+    , ( '\'', "apos" )
+    , ( '<', "lt" )
+    , ( '>', "gt" )
+
+    -- & / &amp; must come last!
+    , ( '&', "amp" )
+    ]
 
 
 {-| Convert an `Xml.Value` to a `Json.Value`
@@ -146,6 +188,9 @@ xmlDecoder =
         , JD.map IntNode JD.int
         , JD.map FloatNode JD.float
         , JD.map BoolNode JD.bool
+
+        -- This is the most explicit way to store a null value:
+        , JD.map Object (JD.null [])
         , JD.list (JD.lazy (\_ -> xmlDecoder))
             |> JD.andThen
                 (\list ->
@@ -167,6 +212,11 @@ xmlDecoder =
                             case val of
                                 Object list ->
                                     list
+                                        -- reverse the list before it
+                                        -- is processed with foldl and
+                                        -- :: (which reverses the
+                                        -- order again)
+                                        |> List.reverse
                                         |> List.foldl
                                             (\v ( a_, p_ ) ->
                                                 case v of

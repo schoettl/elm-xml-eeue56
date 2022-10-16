@@ -1,6 +1,7 @@
 module Xml.Encode exposing
     ( encode, encodeWith, EncodeSettings, defaultEncodeSettings
     , string, int, float, bool, object, null, list
+    , objectSafe
     )
 
 {-| Use this module for turning your Elm data into an `Xml`
@@ -12,6 +13,9 @@ string.
 @docs string, int, float, bool, object, null, list
 
 -}
+
+-- TODO: Attribute names AND tag names must be validated.
+-- Tags are also created in jsonToXml!
 
 import Dict exposing (Dict)
 import String
@@ -246,20 +250,15 @@ object values =
         |> Object
 
 
-
--- TODO: Attribute names AND tag names must be validated.
--- Tags are also created in jsonToXml!
-
-
 {-| Encode an "object" (a tag) only allowing valid tag names
 
     import Dict
 
-    objectSafe [ (" no valid tag!", Dict.empty, string "") ]
-    --> Err "Invalid tag names: no valid tag!"
-
     objectSafe [ ("tagname", Dict.empty, string "") ]
-    --> Ok "<tagname/>"
+    --> Ok (object [ ("tagname", Dict.empty, string "") ])
+
+    objectSafe [ ("invalid!!", Dict.empty, string "") ]
+    --> Err "Invalid tag names: invalid!!"
 
 -}
 objectSafe : List ( String, Dict String Value, Value ) -> Result String Value

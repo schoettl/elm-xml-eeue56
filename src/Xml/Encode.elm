@@ -1,15 +1,13 @@
 module Xml.Encode exposing
-    ( encode
+    ( encode, encodeWith, EncodeSettings, defaultEncodeSettings
     , string, int, float, bool, object, null, list
-    , defaultEncodeSettings, encodeWith
     )
 
-{-|
+{-| Use this module for turning your Elm data into an `Xml`
+representation that can be either queried or decoded, or turned into a
+string.
 
-    Use this module for turning your Elm data into an `Xml` representation that can be either
-    queried or decoded, or turned into a string.
-
-@docs encode
+@docs encode, encodeWith, EncodeSettings, defaultEncodeSettings
 
 @docs string, int, float, bool, object, null, list
 
@@ -20,15 +18,25 @@ import String
 import Xml exposing (Value(..), encodeXmlEntities)
 
 
+{-| Settings used by `encodeWith`.
+
+  - `nullValue`: if not `omitNullTag`, encode a `NullNode` like this.
+  - `omitNullTag`: if `True`, omit a tag if it has no attributes and
+    its only content is a `NullNode`.
+
+-}
 type alias EncodeSettings =
-    { nullValue : String -- if not omitNullTag, encode NullNode like this
+    { nullValue : String
     , trueValue : String -- encode True like this
     , falseValue : String -- encode False like this
-    , omitNullTag : Bool -- omit a tag if it has no attributes and its only content is a NullNode
+    , omitNullTag : Bool
     , attributeSingleQuoteInsteadOfDouble : Bool
     }
 
 
+{-| Good default settings for `EncodeSettings`.
+-}
+defaultEncodeSettings : EncodeSettings
 defaultEncodeSettings =
     { nullValue = ""
     , trueValue = "true"

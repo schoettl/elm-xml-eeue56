@@ -1,17 +1,19 @@
 module Xml.Decode exposing
-    ( decode
+    ( decode, decodeWith, DecodeSettings, defaultDecodeSettings
     , decodeInt, decodeFloat, decodeString, decodeBool
     , decodeChildren
-    , decodeBoolWith, decodeFloatWith, decodeIntWith, decodeNull, decodeWith, defaultDecodeSettings
+    , decodeBoolWith, decodeFloatWith, decodeIntWith, decodeNull
     )
 
 {-|
 
-@docs decode
+@docs decode, decodeWith, DecodeSettings, defaultDecodeSettings
 
 @docs decodeInt, decodeFloat, decodeString, decodeBool
 
 @docs decodeChildren
+
+@docs decodeBoolWith, decodeFloatWith, decodeIntWith, decodeNull
 
 -}
 
@@ -21,6 +23,15 @@ import Xml exposing (Value(..), decodeXmlEntities)
 import Xml.Encode as Encode
 
 
+{-| Settings used by `decodeWith`.
+
+The `*Values` fields define lists of possible values for the
+respecitve node types, e.g. `["true", "True"]` for `True`.
+
+`parseNumbers` specifies if numbers are parsed to
+`IntNode`/`FloatNode` or just `StrNode`.
+
+-}
 type alias DecodeSettings =
     { nullValues : List String
     , trueValues : List String
@@ -29,6 +40,9 @@ type alias DecodeSettings =
     }
 
 
+{-| Good default settings for `DecodeSettings`.
+-}
+defaultDecodeSettings : DecodeSettings
 defaultDecodeSettings =
     { nullValues = [ "" ]
     , trueValues = [ "true" ]
@@ -263,7 +277,7 @@ errNumberParsingDisabled =
     Err "number parsing is disabled"
 
 
-{-| Decode a int
+{-| Decode an int
 
     import Xml exposing (Value(..))
 
@@ -279,6 +293,8 @@ decodeInt =
     decodeIntWith defaultDecodeSettings
 
 
+{-| Decode an int with settings
+-}
 decodeIntWith : DecodeSettings -> String -> Result String Value
 decodeIntWith { parseNumbers } str =
     if not parseNumbers then
@@ -313,6 +329,8 @@ decodeFloat =
     decodeFloatWith defaultDecodeSettings
 
 
+{-| Decode a float with settings
+-}
 decodeFloatWith : DecodeSettings -> String -> Result String Value
 decodeFloatWith { parseNumbers } str =
     if not parseNumbers then
@@ -335,6 +353,8 @@ decodeBool =
     decodeBoolWith defaultDecodeSettings
 
 
+{-| Decode a bool with settings
+-}
 decodeBoolWith : DecodeSettings -> String -> Result String Value
 decodeBoolWith setts str =
     if List.member str setts.trueValues then

@@ -1,14 +1,32 @@
 module Xml exposing
     ( Value(..)
-    , foldl, map, xmlToJson2, jsonToXml
-    , decodeXmlEntities, encodeXmlEntities, xmlDecoder
+    , foldl, map
+    , xmlToJson2, jsonToXml, xmlDecoder
+    , decodeXmlEntities, encodeXmlEntities
     )
 
 {-| The main data structure along with some trivial helpers.
 
 @docs Value
 
-@docs foldl, map, xmlToJson2, jsonToXml
+@docs foldl, map
+
+
+# XML/JSON conversion
+
+This library can convert to and from `Json.Value`.
+
+@docs xmlToJson2, jsonToXml, xmlDecoder
+
+
+# XML character entities
+
+This library can encode and decode the five predefined XML character entities.
+Numeric character references and other named HTML entities (e.g. `&#x20ac;`
+or `&euro;`) are currently not supported.
+Please try to use UTF-8 / Unicode instead.
+
+@docs decodeXmlEntities, encodeXmlEntities
 
 -}
 

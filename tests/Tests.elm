@@ -567,4 +567,24 @@ all =
             , test "encode entities, each only once" <|
                 \_ -> encodeXmlEntities "&quot;" |> Expect.equal "&amp;quot;"
             ]
+        , describe "Check XML names"
+            [ test "empty string is not valid name" <|
+                \_ -> isValidXmlName "" |> Expect.equal False
+            , test "some special characters are valid" <|
+                \_ -> isValidXmlName "_-.:9test" |> Expect.equal True
+            , test "unicode letters are not working (yet)" <|
+                \_ -> isValidXmlName "äöü" |> Expect.equal False
+            , test "invalid characters are not accepted" <|
+                \_ -> isValidXmlName "foo!" |> Expect.equal False
+            ]
+        , describe "objectSafe"
+            [ test "error on invalid tag name" <|
+                \_ ->
+                    objectSafe [ ( "tag!", Dict.singleton "attr" (StrNode "val"), NullNode ) ]
+                        |> Expect.equal (Err "Invalid XML tag or attribute names: tag!")
+            , test "error on invalid attribute name" <|
+                \_ ->
+                    objectSafe [ ( "tag", Dict.singleton "!attr" (StrNode "val"), NullNode ) ]
+                        |> Expect.equal (Err "Invalid XML tag or attribute names: !attr")
+            ]
         ]

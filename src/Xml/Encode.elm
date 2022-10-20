@@ -1,7 +1,6 @@
 module Xml.Encode exposing
     ( encode, encodeWith, EncodeSettings, defaultEncodeSettings
-    , string, int, float, bool, object, null, list
-    , objectSafe
+    , string, int, float, bool, object, objectSafe, null, list
     )
 
 {-| Use this module for turning your Elm data into an `Xml`
@@ -10,7 +9,7 @@ string.
 
 @docs encode, encodeWith, EncodeSettings, defaultEncodeSettings
 
-@docs string, int, float, bool, object, null, list
+@docs string, int, float, bool, object, objectSafe, null, list
 
 -}
 
@@ -242,7 +241,8 @@ bool b =
     BoolNode b
 
 
-{-| Encode an "object" (a tag)
+{-| Encode an "object" - a series of tags with optional attributes and
+a `Value`s as content
 -}
 object : List ( String, Dict String Value, Value ) -> Value
 object values =
@@ -250,7 +250,8 @@ object values =
         |> Object
 
 
-{-| Encode an "object" (a tag) only allowing valid tag names
+{-| Encode an "object" - a series of tags with optional attributes and
+a `Value`s as content only allowing valid tag and attribute names
 
     import Dict
 
@@ -258,7 +259,7 @@ object values =
     --> Ok (object [ ("tagname", Dict.empty, string "") ])
 
     objectSafe [ ("invalid!!", Dict.empty, string "") ]
-    --> Err "Invalid tag names: invalid!!"
+    --> Err "Invalid XML tag or attribute names: invalid!!"
 
 -}
 objectSafe : List ( String, Dict String Value, Value ) -> Result String Value
@@ -274,14 +275,31 @@ objectSafe values =
                         Just name
                 )
                 values
+
+        invalidAttrNames =
+            List.concatMap
+                (\( _, attrs, _ ) ->
+                    List.filterMap
+                        (\name ->
+                            if isValidXmlName name then
+                                Nothing
+
+                            else
+                                Just name
+                        )
+                    <|
+                        Dict.keys attrs
+                )
+                values
     in
-    if List.isEmpty invalidTagNames then
+    if List.isEmpty invalidTagNames && List.isEmpty invalidAttrNames then
         List.map (\( name, props, value ) -> Tag name props value) values
             |> Object
             |> Ok
 
     else
-        Err ("Invalid tag names: " ++ String.concat (List.intersperse ", " invalidTagNames))
+        Err
+            ("Invalid XML tag or attribute names: " ++ String.concat (List.intersperse ", " <| invalidTagNames ++ invalidAttrNames))
 
 
 {-| Encode a list of nodes, e.g

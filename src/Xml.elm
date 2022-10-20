@@ -29,6 +29,8 @@ Please try to use UTF-8 / Unicode instead.
 
 @docs decodeXmlEntities, encodeXmlEntities
 
+@docs isValidXmlName
+
 -}
 
 import Dict exposing (Dict)
@@ -127,13 +129,17 @@ predefinedEntities =
     ]
 
 
+{-| Check if string is a valid XML name for a tag names or an attribute names.
+-}
 isValidXmlName : String -> Bool
 isValidXmlName =
     let
         nameRegex =
             -- O'Reilly: XML in a Nutshell: https://docstore.mik.ua/orelly/xml/xmlnut/ch02_04.htm
+            -- Unicode letters are allowed but the JS regex unicode property escape \p{Letter} doesn't seem to work (yet).
+            -- https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions/Unicode_Property_Escapes
             Maybe.withDefault Regex.never
-                (Regex.fromString "^[_a-zA-Z0-9\\p{Letter}][-_.:a-zA-Z0-9\\p{Letter}]*$")
+                (Regex.fromString "^[_a-zA-Z0-9][-_.:a-zA-Z0-9]*$")
     in
     Regex.contains nameRegex
 
